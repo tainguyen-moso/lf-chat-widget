@@ -13,6 +13,7 @@
 
 // Chat Widget Configuration
 const config = {
+    hostName: 'msg.viet18.com',
     xmppServer: 'wss://msg.viet18.com:443/ws', // Địa chỉ XMPP server
     domain: 'viet18.com', // Domain của XMPP server
     widgetId: 'lf-chat-widget',
@@ -20,8 +21,8 @@ const config = {
     primaryColor: '#4a90e2',
     secondaryColor: '#ffffff',
     title: 'Live Chat Support',
-    supportUserJID: 'tai.pham_gmail.com', // JID của người hỗ trợ
-    historyLimit: 20 // Số lượng tin nhắn tối đa lấy từ lịch sử
+    supportUserJID: 'admin' + "@msg.viet18.com", // JID của người hỗ trợ
+    historyLimit: 10 // Số lượng tin nhắn tối đa lấy từ lịch sử
 };
 
 let elements = null;
@@ -215,7 +216,7 @@ const initializeXMPP = () => {
             
             // Chỉ hiển thị tin nhắn từ người hỗ trợ
             if (from && from.includes(supportJID)) {
-                addMessage(body, false);
+                addMessage(body, false, true);
             }
         }
     });
@@ -326,7 +327,7 @@ const fetchMessageHistory = async (beforeId = null) => {
         xmppClient.removeListener('stanza', handleMAMResult);
         
         // Sắp xếp tin nhắn theo thời gian
-        messages.sort((a, b) => a.timestamp - b.timestamp);
+        messages.sort((a, b) => b.timestamp - a.timestamp);
         
         // Hiển thị tin nhắn
         let lastMessageId = null;
@@ -340,11 +341,11 @@ const fetchMessageHistory = async (beforeId = null) => {
             
             // Hiển thị các tin nhắn
             messages.forEach(msg => {
-                addMessage(msg.body, msg.isUser, false);
+                addMessage(msg.body, msg.isUser, true, false);
                 lastMessageId = msg.id;
             });
             
-            // Nếu số lượng tin nhắn nhận được bằng giới hạn, hiển thị nút tải thêm
+            // // Nếu số lượng tin nhắn nhận được bằng giới hạn, hiển thị nút tải thêm
             if (messages.length >= config.historyLimit) {
                 elements.loadMoreButton.style.display = 'block';
                 elements.loadMoreButton.onclick = () => fetchMessageHistory(messages[0].id);
@@ -384,7 +385,7 @@ const fetchMessageHistory = async (beforeId = null) => {
 };
 
 // Add message to chat window
-const addMessage = (text, isUser, scroll = true) => {
+const addMessage = (text, isUser, isBefore , scroll = true) => {
     if (!elements) return;
     
     const messageElement = document.createElement('div');
@@ -409,12 +410,11 @@ const addMessage = (text, isUser, scroll = true) => {
     messageElement.appendChild(messageBubble);
     
     // Insert before the load more button (if it exists)
-    if (elements.loadMoreButton && elements.loadMoreButton.parentNode === elements.messagesContainer) {
+    if (isBefore) {
         elements.messagesContainer.insertBefore(messageElement, elements.loadMoreButton.nextSibling);
     } else {
-        elements.messagesContainer.appendChild(messageElement);
+        elements.messagesContainer.after(messageElement);
     }
-    
     // Scroll to bottom if needed
     if (scroll) {
         elements.messagesContainer.scrollTop = elements.messagesContainer.scrollHeight;
@@ -435,7 +435,7 @@ const sendMessage = (text) => {
     );
     
     xmppClient.send(message).catch(console.error);
-    addMessage(text, true);
+    addMessage(text, true, false);
 };
 
 // Initialize the widget
